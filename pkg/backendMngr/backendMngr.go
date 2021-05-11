@@ -94,12 +94,19 @@ func (m *BackendManager) CreateOrUpdate(site *sites.Site) {
 }
 
 func (m *BackendManager) Delete(site *sites.Site) {
+	m.log = logging.NewLoggers("backendMngr", "delete")
+
+	m.log.DebugLog().Msg("stop ticker")
 	m.checks[site.Url].close()
+
+	m.log.DebugLog().Msg("delete site from checkUrl")
 	delete(m.checks, site.Url)
 }
 
 func (m *BackendManager) registerSite(site *sites.Site) error {
+	m.log = logging.NewLoggers("backendMngr", "registerSite")
 
+	m.log.DebugLog().Msg("filling out the site for verification")
 	check := check{
 		site:      site,
 		tickCheck: time.NewTicker(time.Duration(site.Frequency) * time.Second),
@@ -109,13 +116,20 @@ func (m *BackendManager) registerSite(site *sites.Site) error {
 		check.tickCheck = time.NewTicker(24 * time.Hour)
 	}
 	m.checks[site.Url] = &check
+
+	m.log.DebugLog().Msg("starting the check")
 	go m.checks[site.Url].serve(m.ctx)
 
 	return nil
 }
 
 func (m *BackendManager) updateSite(sites *sites.Site) error {
+	m.log = logging.NewLoggers("backendMngr", "updateSite")
+
+	m.log.DebugLog().Msg("stop old ticker")
 	m.checks[sites.Url].close()
+
+	m.log.DebugLog().Msg("update site")
 	if err := m.registerSite(sites); err != nil {
 		m.log.ErrorLog().Err(err).Msg("unable to update site")
 		return err
@@ -130,6 +144,8 @@ func (c *check) close() {
 func (c *check) checkStatus() {
 	logger := logging.NewLoggers("backendMngr", "checkStatus")
 	logger.InfoLog().Msg("start check")
+
+	logger.DebugLog().Msg("create client")
 	client := http.Client{
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
@@ -137,11 +153,15 @@ func (c *check) checkStatus() {
 		Timeout: 10 * time.Second,
 	}
 	stat := 0
+
+	logger.DebugLog().Msg("send GET request")
 	resp, err := client.Get(c.site.Url)
 	if err != nil {
 		logger.WarnLog().Err(err).Msg("unable to get response")
 		stat = 600
 	}
+
+	logger.DebugLog().Msg("getting params of state")
 	date := timestamppb.Now()
 	if stat != 600 {
 		stat = resp.StatusCode
@@ -151,6 +171,8 @@ func (c *check) checkStatus() {
 		Status: int64(stat),
 		SiteId: c.site.Id,
 	}
+
+	logger.DebugLog().Msg("create state")
 	if err := statuses.CreateStatus(state); err != nil {
 		logger.ErrorLog().Err(err).Msg("unable to create status")
 		return

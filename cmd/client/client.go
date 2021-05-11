@@ -7,7 +7,6 @@ import (
 	"flag"
 	"fmt"
 	"google.golang.org/grpc"
-	"log"
 	"strconv"
 )
 
@@ -19,6 +18,7 @@ type CliConfig interface {
 
 func StartClient(cfg CliConfig) (proto.SitesServiceClient, error) {
 	logger := logging.NewLoggers("client", "startClient")
+	logger.DebugLog().Msg("connecting to server")
 	conn, err := grpc.Dial(cfg.GetServerAddress(), grpc.WithInsecure())
 	if err != nil {
 		logger.ErrorLog().Str("when", "dial :8000").Err(err).Msg("failed start client")
@@ -30,12 +30,15 @@ func StartClient(cfg CliConfig) (proto.SitesServiceClient, error) {
 
 func ReqCreateSite(ctx context.Context, cli proto.SitesServiceClient) error {
 	logger := logging.NewLoggers("client", "reqCreate")
+	logger.DebugLog().Msg("checking for the correctness of arguments")
 	if flag.NArg() < 3 {
 		err := IncorrectInput
 		logger.ErrorLog().Err(err).Str("request", "failed to process").
 			Msg("please enter \"create <url> <frequency>\"")
 		return err
 	}
+
+	logger.DebugLog().Msg("getting arguments")
 	url := flag.Arg(2)
 	frequency := 0
 	var err error
@@ -48,6 +51,7 @@ func ReqCreateSite(ctx context.Context, cli proto.SitesServiceClient) error {
 		}
 	}
 
+	logger.DebugLog().Msg("create site")
 	res, err := cli.Create(ctx, &proto.CreateRequestSite{
 		Sites: &proto.Site{
 			Url:       url,
@@ -67,12 +71,15 @@ func ReqCreateSite(ctx context.Context, cli proto.SitesServiceClient) error {
 
 func ReqReadSite(ctx context.Context, cli proto.SitesServiceClient) error {
 	logger := logging.NewLoggers("client", "reqRead")
+	logger.DebugLog().Msg("checking for the correctness of arguments")
 	if flag.NArg() != 3 {
 		err := IncorrectInput
 		logger.ErrorLog().Err(err).Str("request", "failed to process").
 			Msg("please enter \"read <site_id>\"")
 		return err
 	}
+
+	logger.DebugLog().Msg("getting arguments")
 	id, err := strconv.Atoi(flag.Arg(2))
 	if err != nil {
 		logger.ErrorLog().Err(err).Str("request", "failed to process").
@@ -80,6 +87,7 @@ func ReqReadSite(ctx context.Context, cli proto.SitesServiceClient) error {
 		return err
 	}
 
+	logger.DebugLog().Msg("getting site")
 	res, err := cli.Read(ctx, &proto.ReadRequestSite{Id: int64(id)})
 	if err != nil {
 		logger.ErrorLog().Err(err).Str("request", "failed to process").
@@ -94,6 +102,7 @@ func ReqReadSite(ctx context.Context, cli proto.SitesServiceClient) error {
 
 func ReqReadAllSite(ctx context.Context, cli proto.SitesServiceClient) error {
 	logger := logging.NewLoggers("client", "reqReadAllSite")
+	logger.DebugLog().Msg("checking for the correctness of arguments")
 	if flag.NArg() != 2 {
 		err := IncorrectInput
 		logger.ErrorLog().Err(err).Str("request", "failed to process").
@@ -101,6 +110,7 @@ func ReqReadAllSite(ctx context.Context, cli proto.SitesServiceClient) error {
 		return err
 	}
 
+	logger.DebugLog().Msg("getting list of sites")
 	res, err := cli.ReadAll(ctx, &proto.ReadAllRequestSite{})
 	if err != nil {
 		logger.ErrorLog().Err(err).Str("request", "failed to process").
@@ -115,12 +125,15 @@ func ReqReadAllSite(ctx context.Context, cli proto.SitesServiceClient) error {
 
 func ReqUpdateSite(ctx context.Context, cli proto.SitesServiceClient) error {
 	logger := logging.NewLoggers("client", "reqUpdate")
+	logger.DebugLog().Msg("checking for the correctness of arguments")
 	if flag.NArg() < 5 {
 		err := IncorrectInput
 		logger.ErrorLog().Err(err).Str("request", "failed to process").
 			Msg("please enter \"update <site_id> <url> <frequency>\"")
 		return err
 	}
+
+	logger.DebugLog().Msg("getting arguments")
 	id, err := strconv.Atoi(flag.Arg(2))
 	if err != nil {
 		logger.ErrorLog().Err(err).Str("request", "failed to process").
@@ -139,6 +152,8 @@ func ReqUpdateSite(ctx context.Context, cli proto.SitesServiceClient) error {
 		Url:       url,
 		Frequency: int64(frequency),
 	}
+
+	logger.DebugLog().Msg("updating site")
 	res, err := cli.Update(ctx, &proto.UpdateRequestSite{Sites: site})
 	if err != nil {
 		logger.ErrorLog().Err(err).Str("request", "failed to process").
@@ -153,33 +168,38 @@ func ReqUpdateSite(ctx context.Context, cli proto.SitesServiceClient) error {
 
 func ReqDeleteSite(ctx context.Context, cli proto.SitesServiceClient) error {
 	logger := logging.NewLoggers("client", "reqDelete")
+	logger.DebugLog().Msg("checking for the correctness of arguments")
 	if flag.NArg() != 3 {
 		err := IncorrectInput
 		logger.WarnLog().Err(err).Str("request", "failed to process").
 			Msg("please enter \"delete <site_id>\"")
 		return err
 	}
+
+	logger.DebugLog().Msg("getting arguments")
 	id, err := strconv.Atoi(flag.Arg(2))
 	if err != nil {
 		logger.WarnLog().Err(err).Str("request", "failed to process").
 			Msg("cannot to convert site_id")
 		return err
 	}
+
+	logger.DebugLog().Msg("deleting site")
 	res, err := cli.Delete(ctx, &proto.DeleteRequestSite{Id: int64(id)})
 	if err != nil {
 		logger.ErrorLog().Err(err).Str("request", "failed to process").
 			Msg("unable to delete site")
 		return err
 	}
-	log.Println("deleted: ", res.GetDeleted())
-	logger.InfoLog().Str("request", "processed successfully").Interface("deleted: ", res.GetDeleted())
+	logger.InfoLog().Str("request", "processed successfully").
+		Interface("deleted: ", res.GetDeleted())
 
 	return nil
 }
 
 func ReqReadStatus(ctx context.Context, cli proto.SitesServiceClient) error {
 	logger := logging.NewLoggers("client", "reqReadStatus")
-	logger.DebugLog().Msg("check arguments")
+	logger.DebugLog().Msg("checking for the correctness of arguments")
 	if flag.NArg() < 3 {
 		err := IncorrectInput
 		logger.ErrorLog().Err(err).Str("request", "failed to process").
@@ -187,6 +207,7 @@ func ReqReadStatus(ctx context.Context, cli proto.SitesServiceClient) error {
 		return err
 	}
 
+	logger.DebugLog().Msg("getting arguments")
 	url := flag.Arg(2)
 	count := 5
 	var err error

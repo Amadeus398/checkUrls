@@ -8,28 +8,27 @@ in seconds (by default - 1 time per day) and saves the status code of the respon
 
 Before you start, configure the environment, where:
 
-- Environment for start CheckUrls:
+- Server environment:
 
-```
+```bash
 SERVERADDRESS    string // address of server
 LOGLEVEL         string // loglevel to display logs
+HOST             string // host 
+PORT             string // port
+USER             string // user login
+PASSWORD         string // user password
+DBNAME           string // DB name
+SSLMODE          string // sslmode default value "disabled"
 ```
 
-
-- Environment for start PostgreSQL server:
-
-```
-HOST       string // host 
-PORT       string // port
-USER       string // user login
-PASSWORD   string // user password
-DBNAME     string // DB name
-SSLMODE    string // sslmode default value "disabled"
+To build server and client 
+```bash
+go build -o checkUrls CheckUrls/cmd
 ```
 
 To get started gRPC server, run
-```
-$ go run main.go server
+```bash
+checkUrls server
 ```
 
 
@@ -60,8 +59,8 @@ Let's look at the implementation of the gRPC client operations.
 
 To **create** a new site, enter in command line:
 
-```
-go run main.go client create <url> <frequency>
+```bash
+checkUrl client create <url> <frequency>
 ```
 
 *Note that the frequency is the specified interval in seconds.
@@ -69,26 +68,26 @@ If you don't enter the "frequency", the site will be checked once a day.*
 
 To **read** a specific site, enter in command line:
 
-```
-go run main.go client read <site_id>
+```bash
+checkUrl client read <site_id>
 ```
 
 To get **list** of sites, enter in command line:
 
-```
-go run main.go client list
+```bash
+checkUrl client list
 ```
 
 To **update** a specific site, enter in command line:
 
-```
-go run main.go client update update <site_id> <url> <frequency>
+```bash
+checkUrl client update <site_id> <url> <frequency>
 ```
 
 To **delete** a specific site, enter in command line:
 
-```
-go run main.go client delete <site_id>
+```bash
+checkUrl client delete <site_id>
 ```
 
 *Note that after the site is deleted, the url availability
@@ -97,8 +96,8 @@ saved in database.*
 
 To get **status** of specific site, enter in command line:
 
-```
-go run main.go client status <url>
+```bash
+checkUrl client status <url>
 ```
 
 *Note that this command returns information about the last 

@@ -13,6 +13,7 @@ type EnvCache struct {
 	DbSslmode     string `envconfig:"SSLMODE" required:true`
 }
 
+// GetServerAddress get server and client address
 func (e *EnvCache) GetServerAddress() string {
 	return e.ServerAddress
 }
@@ -33,26 +34,32 @@ func (e EnvCache) GetLogLevel() zerolog.Level {
 	}
 }
 
+// GetDbHost returns DB host
 func (e *EnvCache) GetDbHost() string {
 	return e.DbHost
 }
 
+// GetDbPort returns DB port
 func (e *EnvCache) GetDbPort() string {
 	return e.DbPort
 }
 
+// GetDbUser returns DB username
 func (e *EnvCache) GetDbUser() string {
 	return e.DbUser
 }
 
+// GetDbPassword returns DB user password
 func (e *EnvCache) GetDbPassword() string {
 	return e.DbPassword
 }
 
+// GetDbName returns DB name
 func (e *EnvCache) GetDbName() string {
 	return e.DbName
 }
 
+// GetDbSslmode returns DB sslmode
 func (e *EnvCache) GetDbSslmode() string {
 	return e.DbSslmode
 }
