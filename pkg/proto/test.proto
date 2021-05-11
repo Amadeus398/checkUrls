@@ -1,0 +1,81 @@
+syntax = "proto3";
+
+package proto;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "CheckUrls/pkg/proto";
+
+message Site {
+    int64 id = 1;
+    string url = 2;
+    int64 frequency = 3;
+}
+
+message State {
+    int64 id = 1;
+    google.protobuf.Timestamp date = 2;
+    int64 status = 3;
+    int64 site_id = 4;
+}
+
+message StatusResponse {
+    string url = 1;
+    int64 frequency = 2;
+    repeated State states = 3;
+}
+
+message ReadRequestState {
+    string url = 1;
+    int64 count = 2;
+}
+
+message CreateRequestSite {
+    Site sites = 1;
+}
+
+message CreateResponseSite {
+    int64 id = 1;
+}
+
+message ReadRequestSite {
+    int64 id = 1;
+}
+
+message ReadResponseSite {
+    Site sites = 1;
+}
+
+message ReadAllRequestSite {
+
+}
+
+message ReadAllResponseSite {
+    repeated Site sites = 1;
+}
+
+message UpdateRequestSite {
+    Site sites = 1;
+}
+
+message UpdateResponseSite {
+    int64 updated = 1;
+}
+
+message DeleteRequestSite {
+    int64 id = 1;
+}
+
+message DeleteResponseSite {
+    int64 deleted = 1;
+}
+
+service SitesService {
+    rpc Create(CreateRequestSite) returns (CreateResponseSite) ;
+    rpc Read(ReadRequestSite) returns (ReadResponseSite) ;
+    rpc ReadAll(ReadAllRequestSite) returns (ReadAllResponseSite) ;
+    rpc Update(UpdateRequestSite) returns (UpdateResponseSite) ;
+    rpc Delete(DeleteRequestSite) returns (DeleteResponseSite) ;
+
+    rpc ReadStatus(ReadRequestState) returns (StatusResponse) ;
+}
