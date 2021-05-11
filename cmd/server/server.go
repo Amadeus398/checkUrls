@@ -2,6 +2,7 @@ package server
 
 import (
 	"CheckUrls/pkg/backendMngr"
+	"CheckUrls/pkg/db"
 	"CheckUrls/pkg/logging"
 	"CheckUrls/pkg/proto"
 	"CheckUrls/pkg/repository/sites"
@@ -22,6 +23,7 @@ type GRPCServer struct {
 	proto.UnimplementedSitesServiceServer
 	Backend *backendMngr.BackendManager
 	log     *logging.Loggers
+	Сonn    *db.ConnectionManager
 }
 
 // Create site...
@@ -34,7 +36,7 @@ func (g *GRPCServer) Create(ctx context.Context, request *proto.CreateRequestSit
 	}
 
 	g.log.DebugLog().Msg("creating site and forming a response")
-	if err := sites.CreateSites(&site); err != nil {
+	if err := sites.CreateSites(g.Сonn, &site); err != nil {
 		if err == sites.ErrSitesNotFound {
 			err = status.Error(codes.NotFound, "unable to create site")
 			g.log.WarnLog().Str("when", "create site").Str("request", "failed to process").
@@ -61,7 +63,7 @@ func (g *GRPCServer) Read(ctx context.Context, request *proto.ReadRequestSite) (
 	site := sites.Site{Id: request.GetId()}
 
 	g.log.DebugLog().Msg("getting site and forming a response")
-	if err := sites.ReadSites(&site); err != nil {
+	if err := sites.ReadSites(g.Сonn, &site); err != nil {
 		if err == sites.ErrSitesNotFound {
 			err = status.Error(codes.NotFound, "unable to get site")
 			g.log.WarnLog().Str("when", "get site").Str("request", "failed to process").
@@ -91,7 +93,7 @@ func (g *GRPCServer) ReadAll(ctx context.Context, request *proto.ReadAllRequestS
 	g.log = logging.NewLoggers("server", "readAll")
 
 	g.log.DebugLog().Msg("getting list of sites and forming a response")
-	list, err := sites.ReadAllSites()
+	list, err := sites.ReadAllSites(g.Сonn)
 	if err != nil {
 		if err == sites.ErrSitesNotFound {
 			err = status.Error(codes.NotFound, "unable to get list")
@@ -131,7 +133,7 @@ func (g *GRPCServer) Update(ctx context.Context, request *proto.UpdateRequestSit
 	}
 
 	g.log.DebugLog().Msg("update site and forming a response")
-	if err := sites.UpdateSites(&site); err != nil {
+	if err := sites.UpdateSites(g.Сonn, &site); err != nil {
 		if err == sites.ErrSitesNotFound {
 			err = status.Error(codes.NotFound, "unable to update")
 			g.log.WarnLog().Str("when", "update site").Str("request", "failed to process").
@@ -156,13 +158,13 @@ func (g *GRPCServer) Delete(ctx context.Context, request *proto.DeleteRequestSit
 	g.log = logging.NewLoggers("server", "delete")
 	g.log.DebugLog().Msg("getting the params for operation with the site")
 	site := sites.Site{Id: request.GetId()}
-	if err := sites.ReadSites(&site); err != nil {
+	if err := sites.ReadSites(g.Сonn, &site); err != nil {
 		err = status.Error(codes.NotFound, "unable to delete")
 		return nil, err
 	}
 
 	g.log.DebugLog().Msg("deleting site and forming a response")
-	if err := sites.DeleteSites(&site); err != nil {
+	if err := sites.DeleteSites(g.Сonn, &site); err != nil {
 		if err == sites.ErrSitesNotFound {
 			err = status.Error(codes.NotFound, "unable to delete")
 			g.log.WarnLog().Str("when", "delete site").Str("request", "failed to process").
@@ -189,7 +191,7 @@ func (g GRPCServer) ReadStatus(ctx context.Context, req *proto.ReadRequestState)
 	count := req.GetCount()
 
 	g.log.DebugLog().Msg("getting list of states and forming a response")
-	list, err := statuses.ReadStatus(url, count)
+	list, err := statuses.ReadStatus(g.Сonn, url, count)
 	if err != nil {
 		if err == statuses.ErrStatusNotFound {
 			err = status.Error(codes.NotFound, "unable to get statuses")
@@ -216,6 +218,7 @@ func RunServer(cfg ServerConfig, ctx context.Context, server *GRPCServer, s *grp
 		err = status.Error(codes.Internal, "error listening server")
 		server.log.ErrorLog().Str("when", "listening server").Err(err).
 			Msg("error listening server, exiting")
+		return err
 	}
 	proto.RegisterSitesServiceServer(s, server)
 

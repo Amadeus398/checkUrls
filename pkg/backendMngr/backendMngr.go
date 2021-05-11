@@ -9,7 +9,6 @@ import (
 	"database/sql"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"net/http"
-	"sync"
 	"time"
 )
 
@@ -21,7 +20,7 @@ type BackendManager struct {
 	checks map[string]*check
 	ctx    context.Context
 	log    *logging.Loggers
-	mux    sync.RWMutex
+	Conn   *db.ConnectionManager
 }
 
 type check struct {
@@ -31,11 +30,12 @@ type check struct {
 	stop       chan struct{}
 }
 
-func NewBackendManager(ctx context.Context) *BackendManager {
+func NewBackendManager(conn *db.ConnectionManager, ctx context.Context) *BackendManager {
 	logger := logging.NewLoggers("backendMngr", "newBackendManager")
 	checkMap := make(map[string]*check)
 	logger.DebugLog().Msg("sql query get all sites with last check")
-	rows, cancel, err := db.ConnManager.Query(sqlLastCheckStatus, false)
+
+	rows, cancel, err := conn.Query(sqlLastCheckStatus, false)
 	if err != nil {
 		logger.ErrorLog().Err(err).Str("when", "sql request").Msg("failed sql query request")
 		return nil
@@ -59,19 +59,21 @@ func NewBackendManager(ctx context.Context) *BackendManager {
 		subDate := time.Now().Sub(lastDate.Time)
 		switch {
 		case !lastDate.Valid || time.Duration(lastCheck.site.Frequency) < subDate:
-			go lastCheck.checkStatus()
+			go lastCheck.checkStatus(conn)
 			lastCheck.tickCheck = time.NewTicker(time.Duration(lastCheck.site.Frequency) * time.Second)
-			go lastCheck.serve(ctx)
+			go lastCheck.serve(conn, ctx)
 		case time.Duration(lastCheck.site.Frequency) > subDate:
 			lastCheck.timerCheck = time.NewTimer((time.Duration(lastCheck.site.Frequency) - subDate) * time.Second)
-			go lastCheck.serveOnce(ctx)
+			go lastCheck.serveOnce(conn, ctx)
 		}
 		checkMap[lastCheck.site.Url] = &lastCheck
+
 	}
 
 	return &BackendManager{
 		checks: checkMap,
 		ctx:    ctx,
+		Conn:   conn,
 	}
 }
 
@@ -118,7 +120,7 @@ func (m *BackendManager) registerSite(site *sites.Site) error {
 	m.checks[site.Url] = &check
 
 	m.log.DebugLog().Msg("starting the check")
-	go m.checks[site.Url].serve(m.ctx)
+	go m.checks[site.Url].serve(m.Conn, m.ctx)
 
 	return nil
 }
@@ -141,7 +143,7 @@ func (c *check) close() {
 	close(c.stop)
 }
 
-func (c *check) checkStatus() {
+func (c *check) checkStatus(conn *db.ConnectionManager) {
 	logger := logging.NewLoggers("backendMngr", "checkStatus")
 	logger.InfoLog().Msg("start check")
 
@@ -173,20 +175,20 @@ func (c *check) checkStatus() {
 	}
 
 	logger.DebugLog().Msg("create state")
-	if err := statuses.CreateStatus(state); err != nil {
+	if err := statuses.CreateStatus(conn, state); err != nil {
 		logger.ErrorLog().Err(err).Msg("unable to create status")
 		return
 	}
 	logger.InfoLog().Str("when", "start check").Msg("done")
 }
 
-func (c *check) serveOnce(ctx context.Context) {
+func (c *check) serveOnce(conn *db.ConnectionManager, ctx context.Context) {
 	defer c.timerCheck.Stop()
 	select {
 	case <-c.timerCheck.C:
-		go c.checkStatus()
+		go c.checkStatus(conn)
 		c.tickCheck = time.NewTicker(time.Duration(c.site.Frequency) * time.Second)
-		go c.serve(ctx)
+		go c.serve(conn, ctx)
 		return
 	case <-c.stop:
 		return
@@ -195,12 +197,12 @@ func (c *check) serveOnce(ctx context.Context) {
 	}
 }
 
-func (c *check) serve(ctx context.Context) {
+func (c *check) serve(conn *db.ConnectionManager, ctx context.Context) {
 	defer c.tickCheck.Stop()
 	for {
 		select {
 		case <-c.tickCheck.C:
-			c.checkStatus()
+			c.checkStatus(conn)
 		case <-c.stop:
 			return
 		case <-ctx.Done():

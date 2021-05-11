@@ -25,10 +25,10 @@ type Site struct {
 	Deleted   bool
 }
 
-func CreateSites(s *Site) error {
+func CreateSites(conn *db.ConnectionManager, s *Site) error {
 	logger := logging.NewLoggers("sites", "createSite")
 	logger.DebugLog().Msg("find the site")
-	row, cancel, err := db.ConnManager.QueryRow(sqlSiteFind, s.Url, true)
+	row, cancel, err := conn.QueryRow(sqlSiteFind, s.Url, true)
 	if err != nil {
 		logger.ErrorLog().Err(err).Str("when", "processing the sql request to find site").
 			Msg("unable to find site")
@@ -39,7 +39,7 @@ func CreateSites(s *Site) error {
 	if err := row.Scan(&s.Id); err != nil {
 		if err == sql.ErrNoRows {
 			logger.DebugLog().Str("when", "site not found").Msg("create new site")
-			row, cancel, err = db.ConnManager.QueryRow(sqlSiteCreate, s.Url, s.Frequency, false)
+			row, cancel, err = conn.QueryRow(sqlSiteCreate, s.Url, s.Frequency, false)
 			if err != nil {
 				logger.ErrorLog().Err(err).Str("when", "processing sql request create site").
 					Msg("unable to create site")
@@ -58,7 +58,7 @@ func CreateSites(s *Site) error {
 	}
 
 	logger.DebugLog().Str("when", "site found").Msg("processing sql request update site")
-	if err := db.ConnManager.Exec(sqlSiteUpdate, s.Url, s.Frequency, s.Id, false); err != nil {
+	if err := conn.Exec(sqlSiteUpdate, s.Url, s.Frequency, s.Id, false); err != nil {
 		if err == db.ErrNothingDone {
 			logger.ErrorLog().Err(err).Str("when", "processing sql request update site").
 				Str("when", "site not found").Msg("unable to update site")
@@ -72,11 +72,11 @@ func CreateSites(s *Site) error {
 	return nil
 }
 
-func ReadSites(s *Site) error {
+func ReadSites(conn *db.ConnectionManager, s *Site) error {
 	logger := logging.NewLoggers("sites", "readSite")
 
 	logger.DebugLog().Msg("processing sql request read site")
-	row, cancel, err := db.ConnManager.QueryRow(sqlSiteRead, s.Id, false)
+	row, cancel, err := conn.QueryRow(sqlSiteRead, s.Id, false)
 	if err != nil {
 		logger.ErrorLog().Err(err).Str("when", "processing sql request read site").
 			Msg("unable to read site")
@@ -91,11 +91,11 @@ func ReadSites(s *Site) error {
 	return nil
 }
 
-func ReadAllSites() ([]*Site, error) {
+func ReadAllSites(conn *db.ConnectionManager) ([]*Site, error) {
 	logger := logging.NewLoggers("sites", "readAllSites")
-
 	logger.DebugLog().Msg("processing sql request read all sites")
-	rows, cancel, err := db.ConnManager.Query(sqlSiteList, false)
+
+	rows, cancel, err := conn.Query(sqlSiteList, false)
 	if err != nil {
 		if err == db.ErrNothingDone {
 			logger.ErrorLog().Err(err).Str("when", "processing sql request read all sites").
@@ -130,11 +130,11 @@ func ReadAllSites() ([]*Site, error) {
 	return list, nil
 }
 
-func UpdateSites(s *Site) error {
+func UpdateSites(conn *db.ConnectionManager, s *Site) error {
 	logger := logging.NewLoggers("sites", "updateSites")
 
 	logger.DebugLog().Msg("processing sql request update site")
-	if err := db.ConnManager.Exec(sqlSiteUpdate, s.Url, s.Frequency, s.Id, false); err != nil {
+	if err := conn.Exec(sqlSiteUpdate, s.Url, s.Frequency, s.Id, false); err != nil {
 		if err == db.ErrNothingDone {
 			logger.ErrorLog().Err(err).Str("when", "processing sql request update site").
 				Str("when", "site not found").Msg("unable to update site")
@@ -147,11 +147,11 @@ func UpdateSites(s *Site) error {
 	return nil
 }
 
-func DeleteSites(s *Site) error {
+func DeleteSites(conn *db.ConnectionManager, s *Site) error {
 	logger := logging.NewLoggers("sites", "deleteSites")
 
 	logger.DebugLog().Msg("processing sql request delete site")
-	if err := db.ConnManager.Exec(sqlSiteDelete, s.Id, true); err != nil {
+	if err := conn.Exec(sqlSiteDelete, s.Id, true); err != nil {
 		if err == db.ErrNothingDone {
 			logger.ErrorLog().Err(err).Str("when", "processing sql request delete site").
 				Str("when", "site not found").Msg("unable to delete site")

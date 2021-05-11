@@ -11,7 +11,7 @@ import (
 
 var (
 	ErrNothingDone = fmt.Errorf("sql query did nothing")
-	ConnManager    = &ConnectionManager{}
+	//ConnMnr = &ConnectionManager{}
 )
 
 type DbConfig interface {
@@ -24,8 +24,12 @@ type DbConfig interface {
 }
 
 type ConnectionManager struct {
-	conn *sql.DB
+	Conn *sql.DB
 	log  *logging.Loggers
+}
+
+func NewConnectionManager() *ConnectionManager {
+	return &ConnectionManager{}
 }
 
 type sqlInfo struct {
@@ -53,12 +57,12 @@ func (c *ConnectionManager) Connect(cfg DbConfig) error {
 	)
 
 	var err error
-	c.conn, err = sql.Open("pgx", connector)
+	c.Conn, err = sql.Open("pgx", connector)
 	if err != nil {
 		c.log.ErrorLog().Str("when", "open connection").Err(err).Msg("failed to open connection")
 		return err
 	}
-	if err := c.conn.Ping(); err != nil {
+	if err := c.Conn.Ping(); err != nil {
 		c.log.ErrorLog().Str("when", "ping connection").Err(err).Msg("failed to ping connection")
 		return err
 	}
@@ -68,7 +72,7 @@ func (c *ConnectionManager) Connect(cfg DbConfig) error {
 
 func (c *ConnectionManager) Close() error {
 	c.log = logging.NewLoggers("db", "close")
-	if err := c.conn.Close(); err != nil {
+	if err := c.Conn.Close(); err != nil {
 		c.log.ErrorLog().Str("when", "clode connection").Err(err).Msg("failed to close connection")
 		return err
 	}
@@ -77,7 +81,7 @@ func (c *ConnectionManager) Close() error {
 
 func (c *ConnectionManager) Exec(query string, args ...interface{}) error {
 	c.log = logging.NewLoggers("db", "exec")
-	if err := c.conn.Ping(); err != nil {
+	if err := c.Conn.Ping(); err != nil {
 		c.log.ErrorLog().Str("when", "ping connection").Err(err).Msg("failed to ping connection")
 		return err
 	}
@@ -85,7 +89,7 @@ func (c *ConnectionManager) Exec(query string, args ...interface{}) error {
 	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	result, err := c.conn.ExecContext(queryCtx, query, args...)
+	result, err := c.Conn.ExecContext(queryCtx, query, args...)
 	if err != nil {
 		c.log.ErrorLog().Str("when", "exec").Err(err).Msg("error at exec")
 		return err
@@ -104,28 +108,28 @@ func (c *ConnectionManager) Exec(query string, args ...interface{}) error {
 
 func (c *ConnectionManager) QueryRow(query string, args ...interface{}) (*sql.Row, func(), error) {
 	c.log = logging.NewLoggers("db", "queryRow")
-	if err := c.conn.Ping(); err != nil {
+	if err := c.Conn.Ping(); err != nil {
 		c.log.ErrorLog().Str("when", "ping connection").Err(err).Msg("failed to ping connection")
 		return nil, nil, err
 	}
 	ctx := context.TODO()
 	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 
-	row := c.conn.QueryRowContext(queryCtx, query, args...)
+	row := c.Conn.QueryRowContext(queryCtx, query, args...)
 
 	return row, cancel, nil
 }
 
 func (c *ConnectionManager) Query(query string, args ...interface{}) (*sql.Rows, func(), error) {
 	c.log = logging.NewLoggers("db", "query")
-	if err := c.conn.Ping(); err != nil {
+	if err := c.Conn.Ping(); err != nil {
 		c.log.ErrorLog().Str("when", "ping connection").Err(err).Msg("failed to ping connection")
 		return nil, nil, err
 	}
 	ctx := context.TODO()
 	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 
-	rows, err := c.conn.QueryContext(queryCtx, query, args...)
+	rows, err := c.Conn.QueryContext(queryCtx, query, args...)
 	if err != nil {
 		c.log.ErrorLog().Str("when", "get rows").Err(err).Msg("failed to get rows")
 		defer cancel()

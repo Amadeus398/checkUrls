@@ -24,10 +24,10 @@ type State struct {
 	SiteId int64
 }
 
-func CreateStatus(status *State) error {
+func CreateStatus(conn *db.ConnectionManager, status *State) error {
 	log := logging.NewLoggers("statuses", "createStatus")
 	log.DebugLog().Msg("processing the sql request")
-	err := db.ConnManager.Exec(sqlCreateStatus, status.Date, status.Status, status.SiteId)
+	err := conn.Exec(sqlCreateStatus, status.Date, status.Status, status.SiteId)
 	if err != nil {
 		if err == db.ErrNothingDone {
 			err = ErrStatusNotFound
@@ -40,10 +40,10 @@ func CreateStatus(status *State) error {
 	return nil
 }
 
-func ReadStatus(url string, count int64) (*proto.StatusResponse, error) {
+func ReadStatus(conn *db.ConnectionManager, url string, count int64) (*proto.StatusResponse, error) {
 	log := logging.NewLoggers("statuses", "readStatus")
 	log.DebugLog().Msg("processing the sql request")
-	rows, cancel, err := db.ConnManager.Query(sqlGetStatus, url, count)
+	rows, cancel, err := conn.Query(sqlGetStatus, url, count)
 	if err != nil {
 		if err == db.ErrNothingDone {
 			err = ErrStatusNotFound

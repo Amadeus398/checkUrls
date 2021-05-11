@@ -32,9 +32,6 @@ func main() {
 			Msg("unable to parse the environment")
 	}
 
-	dbCfg := db.DbConfig(cfg)
-	serveCfg := server.ServerConfig(cfg)
-	cliCfg := client.CliConfig(cfg)
 	logCfg := loggerConfig(cfg)
 
 	zerolog.SetGlobalLevel(logCfg.GetLogLevel())
@@ -43,11 +40,16 @@ func main() {
 	flag.Parse()
 	switch flag.Arg(0) {
 	case "server":
-		if err := db.ConnManager.Connect(dbCfg); err != nil {
+		dbCfg := db.DbConfig(cfg)
+		serveCfg := server.ServerConfig(cfg)
+
+		connMnr := db.NewConnectionManager()
+
+		if err := connMnr.Connect(dbCfg); err != nil {
 			logger.FatalLog().Str("when", "connect DB").Err(err).Msg("failed to connect DB")
 		}
 		defer func() {
-			if err := db.ConnManager.Close(); err != nil {
+			if err := connMnr.Close(); err != nil {
 				logger.FatalLog().Str("when", "close connect DB").Err(err).Msg("failed to close DB")
 			}
 		}()
@@ -56,7 +58,8 @@ func main() {
 		errGroup, errGroupCtx := errgroup.WithContext(ctx)
 		s := grpc.NewServer()
 		serve := &server.GRPCServer{
-			Backend: backendMngr.NewBackendManager(errGroupCtx),
+			Backend: backendMngr.NewBackendManager(connMnr, errGroupCtx),
+			Сonn:    connMnr,
 		}
 
 		errGroup.Go(func() error {
@@ -95,6 +98,7 @@ func main() {
 		}
 
 	case "client":
+		cliCfg := client.CliConfig(cfg)
 		cli, err := client.StartClient(cliCfg)
 		if err != nil {
 			logger.FatalLog().Str("when", "starting client").Err(err).Msg("failed to start client")
