@@ -7,7 +7,6 @@ import (
 	statuses "CheckUrls/pkg/repository/status"
 	"context"
 	"database/sql"
-	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"net/http"
 	"sync"
@@ -35,6 +34,7 @@ type check struct {
 func NewBackendManager(ctx context.Context) *BackendManager {
 	logger := logging.NewLoggers("backendMngr", "newBackendManager")
 	checkMap := make(map[string]*check)
+	logger.DebugLog().Msg("sql query get all sites with last check")
 	rows, cancel, err := db.ConnManager.Query(sqlLastCheckStatus, false)
 	if err != nil {
 		logger.ErrorLog().Err(err).Str("when", "sql request").Msg("failed sql query request")
@@ -43,7 +43,7 @@ func NewBackendManager(ctx context.Context) *BackendManager {
 	defer cancel()
 	defer func() {
 		if err := rows.Close(); err != nil {
-			log.Error().Err(err).Msg("failed to close rows")
+			logger.ErrorLog().Err(err).Str("when", "close rows").Msg("failed to close rows")
 		}
 	}()
 	for rows.Next() {
@@ -53,7 +53,7 @@ func NewBackendManager(ctx context.Context) *BackendManager {
 		}
 		var lastDate sql.NullTime
 		if err := rows.Scan(&lastCheck.site.Id, &lastCheck.site.Url, &lastCheck.site.Frequency, &lastDate); err != nil {
-			log.Error().Err(err).Msg("unable to scan results")
+			logger.ErrorLog().Err(err).Str("when", "scan rows").Msg("unable to scan results")
 			return nil
 		}
 		subDate := time.Now().Sub(lastDate.Time)
@@ -76,7 +76,9 @@ func NewBackendManager(ctx context.Context) *BackendManager {
 }
 
 func (m *BackendManager) CreateOrUpdate(site *sites.Site) {
+	m.log = logging.NewLoggers("backendNanager", "createOrUpdate")
 	_, ok := m.checks[site.Url]
+	m.log.DebugLog().Msg("create new site")
 	if !ok {
 		if err := m.registerSite(site); err != nil {
 			m.log.ErrorLog().Err(err).Msg("unable to register site")
@@ -84,6 +86,7 @@ func (m *BackendManager) CreateOrUpdate(site *sites.Site) {
 		}
 	}
 
+	m.log.DebugLog().Msg("update site")
 	if err := m.updateSite(site); err != nil {
 		m.log.ErrorLog().Err(err).Msg("unable to update site")
 		return
