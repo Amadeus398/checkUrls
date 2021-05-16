@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"google.golang.org/grpc"
 	"strconv"
+	"time"
 )
 
 var IncorrectInput = fmt.Errorf("incorrect input of arguments")
@@ -191,8 +192,9 @@ func ReqDeleteSite(ctx context.Context, cli proto.SitesServiceClient) error {
 			Msg("unable to delete site")
 		return err
 	}
+
 	logger.InfoLog().Str("request", "processed successfully").
-		Interface("deleted: ", res.GetDeleted())
+		Interface("deleted: ", res.GetDeleted()).Msg("done")
 
 	return nil
 }
@@ -229,8 +231,13 @@ func ReqReadStatus(ctx context.Context, cli proto.SitesServiceClient) error {
 			Msg("unable to get list of states")
 		return err
 	}
-	logger.InfoLog().Str("request", "processed successfully").
-		Interface("list of states: ", res.GetStates()).Msg("done")
+	statesStr := ""
+	for _, state := range res.GetStates() {
+		statesStr += fmt.Sprintf("%d: %s - %d; ", state.GetId(),
+			time.Unix(state.GetDate().GetSeconds(), int64(state.GetDate().GetNanos())), state.GetStatus())
+	}
+	logger.InfoLog().Str("request", "processed successfully").Str("site", res.GetUrl()).
+		Interface("frequency", res.GetFrequency()).Str("list of states: ", statesStr).Msg("done")
 
 	return nil
 }

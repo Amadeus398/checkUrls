@@ -5,6 +5,7 @@ import (
 	"CheckUrls/pkg/logging"
 	"CheckUrls/pkg/proto"
 	"fmt"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"time"
 )
 
@@ -63,10 +64,12 @@ func ReadStatus(url string, count int64) (*proto.StatusResponse, error) {
 	log.DebugLog().Msg("getting all rows")
 	for rows.Next() {
 		s := new(proto.State)
-		if err := rows.Scan(&s.Id, &s.Date, &s.Status, &s.SiteId, &url, &frequency); err != nil {
+		var checkTime time.Time
+		if err := rows.Scan(&s.Id, &checkTime, &s.Status, &s.SiteId, &url, &frequency); err != nil {
 			log.ErrorLog().Err(err).Str("when", "getting all rows").Msg("unable to get rows")
 			return nil, err
 		}
+		s.Date = timestamppb.New(checkTime)
 		list = append(list, s)
 	}
 
